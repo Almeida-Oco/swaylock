@@ -48,6 +48,8 @@ struct swaylock_args {
 	enum background_mode mode;
 	char *font;
 	uint32_t font_size;
+    uint32_t indicator_x;
+    uint32_t indicator_y;
 	uint32_t radius;
 	uint32_t thickness;
 	bool ignore_empty;
@@ -130,3 +132,4 @@ void run_pw_backend_child(void);
 void clear_buffer(char *buf, size_t size);
 
 #endif
+

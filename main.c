@@ -27,6 +27,9 @@
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
+#define STRTOUL_ERROR(str, temp, val) ((temp == str || *temp != '\0' || ((val == 0 || val == UINT_MAX) && errno == ERANGE)))
+
+
 static uint32_t parse_color(const char *color) {
 	if (color[0] == '#') {
 		++color;
@@ -43,6 +46,38 @@ static uint32_t parse_color(const char *color) {
 		res = (res << 8) | 0xFF;
 	}
 	return res;
+}
+
+static uint32_t* parse_position(const char *pos) {
+    char *colon_pos = strpbrk(pos, ":"), *temp;
+    static uint32_t x_pos, y_pos, ret[2];
+
+    if (colon_pos == NULL) {
+        swaylock_log(LOG_DEBUG, "Invalid position format %s, will use default",
+                 pos);
+    }
+    else {
+        (*colon_pos) = '\0';
+        colon_pos++;
+        errno = 0;
+        x_pos = (uint32_t)strtoul(pos, &temp, 10);
+        if (STRTOUL_ERROR(pos, temp, x_pos)) {
+            swaylock_log(LOG_DEBUG, "Invalid X position format %s, will use default",
+                 pos);
+            x_pos = -1;
+        }
+        errno = 0;
+        y_pos = (uint32_t)strtoul(colon_pos, &temp, 10);
+        printf("Position parsed = %d\n", y_pos);
+        if (STRTOUL_ERROR(colon_pos, temp, y_pos)) {
+            swaylock_log(LOG_DEBUG, "Invalid Y position format %s, will use default",
+                    colon_pos);
+            y_pos = -1;
+        }
+    }
+    ret[0] = x_pos;
+    ret[1] = y_pos;
+    return ret;
 }
 
 int lenient_strcmp(char *a, char *b) {
@@ -507,6 +542,7 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 		LO_FONT_SIZE,
 		LO_IND_RADIUS,
 		LO_IND_THICKNESS,
+        LO_IND_POSITION,
 		LO_INSIDE_COLOR,
 		LO_INSIDE_CLEAR_COLOR,
 		LO_INSIDE_CAPS_LOCK_COLOR,
@@ -561,6 +597,7 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 		{"font-size", required_argument, NULL, LO_FONT_SIZE},
 		{"indicator-radius", required_argument, NULL, LO_IND_RADIUS},
 		{"indicator-thickness", required_argument, NULL, LO_IND_THICKNESS},
+        {"indicator-pos", required_argument, NULL, LO_IND_POSITION},
 		{"inside-color", required_argument, NULL, LO_INSIDE_COLOR},
 		{"inside-clear-color", required_argument, NULL, LO_INSIDE_CLEAR_COLOR},
 		{"inside-caps-lock-color", required_argument, NULL, LO_INSIDE_CAPS_LOCK_COLOR},
@@ -640,6 +677,8 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 			"Sets the indicator radius.\n"
 		"  --indicator-thickness <thick>    "
 			"Sets the indicator thickness.\n"
+        "  --indicator-pos <position>       "
+			"Sets the indicator position.\n"
 		"  --inside-color <color>           "
 			"Sets the color of the inside of the indicator.\n"
 		"  --inside-clear-color <color>     "
@@ -701,7 +740,8 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 		"  --text-wrong-color <color>       "
 			"Sets the color of the text when invalid.\n"
 		"\n"
-		"All <color> options are of the form <rrggbb[aa]>.\n";
+		"All <color> options are of the form <rrggbb[aa]>\n"
+        "All <position> options are of the form <X:Y>.\n";
 
 	int c;
 	optind = 1;
@@ -834,6 +874,13 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 				state->args.thickness = strtol(optarg, NULL, 0);
 			}
 			break;
+        case LO_IND_POSITION:
+            if (state) {
+                uint32_t *pos = parse_position(optarg);
+                state->args.indicator_x = pos[0];
+                state->args.indicator_y = pos[1];
+            }
+            break;
 		case LO_INSIDE_COLOR:
 			if (state) {
 				state->args.colors.inside.input = parse_color(optarg);
@@ -1202,3 +1249,4 @@ int main(int argc, char **argv) {
 	free(state.args.font);
 	return 0;
 }
+

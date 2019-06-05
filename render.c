@@ -5,6 +5,7 @@
 #include "background-image.h"
 #include "swaylock.h"
 
+#define IN_SURFACE(desired, max, radius) ((desired <= max) ? desired - 4 : (max/2)-radius)
 #define M_PI 3.14159265358979323846
 const float TYPE_INDICATOR_RANGE = M_PI / 3.0f;
 const float TYPE_INDICATOR_BORDER_THICKNESS = M_PI / 128.0f;
@@ -76,9 +77,9 @@ void render_frame(struct swaylock_surface *surface) {
 	int buffer_diameter = (arc_radius + arc_thickness) * 2;
 	int buffer_height = buffer_diameter * 2;
 
-	int indicator_radius = state->args.radius + state->args.thickness;
-	int subsurf_xpos = surface->width / 2 - indicator_radius;
-	int subsurf_ypos = surface->height / 2 - indicator_radius;
+	int ind_radius = state->args.radius + state->args.thickness;
+	int subsurf_xpos = IN_SURFACE(state->args.indicator_x, surface->width, ind_radius);
+	int subsurf_ypos = IN_SURFACE(state->args.indicator_y, surface->height, ind_radius);
 	wl_subsurface_set_position(surface->subsurface, subsurf_xpos, subsurf_ypos);
 
 	surface->current_buffer = get_next_buffer(state->shm,
@@ -291,3 +292,4 @@ void render_frames(struct swaylock_state *state) {
 		render_frame(surface);
 	}
 }
+
