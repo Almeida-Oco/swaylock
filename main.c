@@ -605,9 +605,9 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 		{"show-failed-attempts", no_argument, NULL, 'F'},
 		{"version", no_argument, NULL, 'v'},
         {"show-date", no_argument, NULL, LO_SHOW_DATE},
+        {"show-time", no_argument, NULL, LO_SHOW_TIME},
         {"date-pos", required_argument, NULL, LO_DATE_POSITION},
         {"time-pos", required_argument, NULL, LO_TIME_POSITION},
-        {"show-time", no_argument, NULL, LO_SHOW_TIME},
         {"date-font-size", required_argument, NULL, LO_DATE_FONT_SIZE},
         {"time-font-size", required_argument, NULL, LO_TIME_FONT_SIZE},
 		{"bs-hl-color", required_argument, NULL, LO_BS_HL_COLOR},
@@ -683,8 +683,6 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 			"Show the version number and quit.\n"
 		"  --bs-hl-color <color>            "
 			"Sets the color of backspace highlight segments.\n"
-		"  --show-datetime                  "
-			"Shows the current datetime.\n"
 		"  --caps-lock-bs-hl-color <color>  "
 			"Sets the color of backspace highlight segments when Caps Lock "
 			"is active.\n"
@@ -695,6 +693,14 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 			"Sets the font of the text.\n"
 		"  --font-size <size>               "
 			"Sets a fixed font size for the indicator text.\n"
+        "  --show_date                      "
+			"Shows the current date (dd/mm/yyyy)\n"
+        "  --show_time                      "
+			"Shows the current time (hh:mm:ss)\n"
+        "  --date-font-size <size>          "
+			"Sets a fixed font size for the date text.\n"
+        "  --time-font-size <size>          "
+			"Sets a fixed font size for the time text.\n"
 		"  --indicator-radius <radius>      "
 			"Sets the indicator radius.\n"
 		"  --indicator-thickness <thick>    "

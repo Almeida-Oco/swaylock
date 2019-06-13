@@ -149,7 +149,7 @@ void render_frame(struct swaylock_surface *surface) {
         int time_x = IN_SURFACE(state->args.pos.time_x - te.x_bearing, surface->width, 
                 mid_x - (te.width / 2 + te.x_bearing));
         int time_y = IN_SURFACE(state->args.pos.time_y + te.height - (fe.descent / 2),
-                 surface->height, 10 + te.height - (fe.descent / 2));
+                 surface->height, 10 + time_y_offset + te.height - (fe.descent / 2));
 
         cairo_move_to(cairo, time_x, time_y);
         cairo_show_text(cairo, time_txt);
