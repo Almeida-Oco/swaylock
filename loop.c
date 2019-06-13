@@ -28,6 +28,7 @@ struct loop {
 	struct pollfd *fds;
 	int fd_length;
 	int fd_capacity;
+    struct timespec last_check;
 
 	struct wl_list fd_events; // struct loop_fd_event::link
 	struct wl_list timers; // struct loop_timer::link
@@ -61,26 +62,9 @@ void loop_destroy(struct loop *loop) {
 	free(loop);
 }
 
-void loop_poll(struct loop *loop) {
-	// Calculate next timer in ms
-	int ms = INT_MAX;
-	if (!wl_list_empty(&loop->timers)) {
-		struct timespec now;
-		clock_gettime(CLOCK_MONOTONIC, &now);
-		struct loop_timer *timer = NULL;
-		wl_list_for_each(timer, &loop->timers, link) {
-			int timer_ms = (timer->expiry.tv_sec - now.tv_sec) * 1000;
-			timer_ms += (timer->expiry.tv_nsec - now.tv_nsec) / 1000000;
-			if (timer_ms < ms) {
-				ms = timer_ms;
-			}
-		}
-	}
-	if (ms < 0) {
-		ms = 0;
-	}
-
-	poll(loop->fds, loop->fd_length, ms);
+bool loop_poll(struct loop *loop) {
+	struct timespec now;
+	poll(loop->fds, loop->fd_length, 95);
 
 	// Dispatch fds
 	size_t fd_index = 0;
@@ -100,7 +84,6 @@ void loop_poll(struct loop *loop) {
 
 	// Dispatch timers
 	if (!wl_list_empty(&loop->timers)) {
-		struct timespec now;
 		clock_gettime(CLOCK_MONOTONIC, &now);
 		struct loop_timer *timer = NULL, *tmp_timer = NULL;
 		wl_list_for_each_safe(timer, tmp_timer, &loop->timers, link) {
@@ -113,6 +96,13 @@ void loop_poll(struct loop *loop) {
 			}
 		}
 	}
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+    if (now.tv_sec > loop->last_check.tv_sec) {
+        loop->last_check = now;
+        return true;
+    }
+    return false;
 }
 
 void loop_add_fd(struct loop *loop, int fd, short mask,

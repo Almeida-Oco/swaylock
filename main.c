@@ -64,15 +64,14 @@ static uint32_t* parse_position(const char *pos) {
         if (STRTOUL_ERROR(pos, temp, x_pos)) {
             swaylock_log(LOG_DEBUG, "Invalid X position format %s, will use default",
                  pos);
-            x_pos = -1;
+            x_pos = UINT_MAX;
         }
         errno = 0;
         y_pos = (uint32_t)strtoul(colon_pos, &temp, 10);
-        printf("Position parsed = %d\n", y_pos);
         if (STRTOUL_ERROR(colon_pos, temp, y_pos)) {
             swaylock_log(LOG_DEBUG, "Invalid Y position format %s, will use default",
                     colon_pos);
-            y_pos = -1;
+            y_pos = UINT_MAX;
         }
     }
     ret[0] = x_pos;
@@ -526,6 +525,15 @@ static void set_default_colors(struct swaylock_colors *colors) {
 	};
 }
 
+static void set_default_positions(struct swaylock_positions *pos) {
+    pos->ind_x = UINT_MAX;
+    pos->ind_y = UINT_MAX;
+    pos->date_x = UINT_MAX;
+    pos->date_y = UINT_MAX;
+    pos->time_x = UINT_MAX;
+    pos->time_y = UINT_MAX;
+}
+
 enum line_mode {
 	LM_LINE,
 	LM_INSIDE,
@@ -540,9 +548,15 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 		LO_CAPS_LOCK_KEY_HL_COLOR,
 		LO_FONT,
 		LO_FONT_SIZE,
+        LO_DATE_FONT_SIZE,
+        LO_TIME_FONT_SIZE,
 		LO_IND_RADIUS,
 		LO_IND_THICKNESS,
         LO_IND_POSITION,
+        LO_SHOW_DATE,
+        LO_SHOW_TIME,
+        LO_DATE_POSITION,
+        LO_TIME_POSITION,
 		LO_INSIDE_COLOR,
 		LO_INSIDE_CLEAR_COLOR,
 		LO_INSIDE_CAPS_LOCK_COLOR,
@@ -590,6 +604,12 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 		{"hide-keyboard-layout", no_argument, NULL, 'K'},
 		{"show-failed-attempts", no_argument, NULL, 'F'},
 		{"version", no_argument, NULL, 'v'},
+        {"show-date", no_argument, NULL, LO_SHOW_DATE},
+        {"date-pos", required_argument, NULL, LO_DATE_POSITION},
+        {"time-pos", required_argument, NULL, LO_TIME_POSITION},
+        {"show-time", no_argument, NULL, LO_SHOW_TIME},
+        {"date-font-size", required_argument, NULL, LO_DATE_FONT_SIZE},
+        {"time-font-size", required_argument, NULL, LO_TIME_FONT_SIZE},
 		{"bs-hl-color", required_argument, NULL, LO_BS_HL_COLOR},
 		{"caps-lock-bs-hl-color", required_argument, NULL, LO_CAPS_LOCK_BS_HL_COLOR},
 		{"caps-lock-key-hl-color", required_argument, NULL, LO_CAPS_LOCK_KEY_HL_COLOR},
@@ -649,7 +669,7 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 			"Display the current xkb layout while typing.\n"
 		"  -K, --hide-keyboard-layout       "
 			"Hide the current xkb layout while typing.\n"
-		"  -L, --disable-caps-lock-text     "
+        "  -L, --disable-caps-lock-text     "
 			"Disable the Caps Lock text.\n"
 		"  -l, --indicator-caps-lock        "
 			"Show the current Caps Lock state also on the indicator.\n"
@@ -663,6 +683,8 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 			"Show the version number and quit.\n"
 		"  --bs-hl-color <color>            "
 			"Sets the color of backspace highlight segments.\n"
+		"  --show-datetime                  "
+			"Shows the current datetime.\n"
 		"  --caps-lock-bs-hl-color <color>  "
 			"Sets the color of backspace highlight segments when Caps Lock "
 			"is active.\n"
@@ -838,7 +860,41 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 			fprintf(stdout, "swaylock version " SWAYLOCK_VERSION "\n");
 			exit(EXIT_SUCCESS);
 			break;
-		case LO_BS_HL_COLOR:
+        case LO_SHOW_DATE:
+            if (state) {
+                state->args.show_date = true;
+            }
+            break;
+        case LO_SHOW_TIME:
+            if (state) {
+                state->args.show_time = true;
+            }
+            break;
+        case LO_DATE_FONT_SIZE:
+			if (state) {
+				state->args.date_font_size = atoi(optarg);
+			}
+			break;
+        case LO_TIME_FONT_SIZE:
+			if (state) {
+				state->args.time_font_size = atoi(optarg);
+			}
+			break;
+        case LO_DATE_POSITION:
+            if (state) {
+                uint32_t *pos = parse_position(optarg);
+                state->args.pos.date_x = pos[0];
+                state->args.pos.date_y = pos[1];
+            }
+            break;
+        case LO_TIME_POSITION:
+            if (state) {
+                uint32_t *pos = parse_position(optarg);
+                state->args.pos.time_x = pos[0];
+                state->args.pos.time_y = pos[1];
+            }
+            break;
+        case LO_BS_HL_COLOR:
 			if (state) {
 				state->args.colors.bs_highlight = parse_color(optarg);
 			}
@@ -877,8 +933,8 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
         case LO_IND_POSITION:
             if (state) {
                 uint32_t *pos = parse_position(optarg);
-                state->args.indicator_x = pos[0];
-                state->args.indicator_y = pos[1];
+                state->args.pos.ind_x = pos[0];
+                state->args.pos.ind_y = pos[1];
             }
             break;
 		case LO_INSIDE_COLOR:
@@ -1123,16 +1179,21 @@ int main(int argc, char **argv) {
 		.font_size = 0,
 		.radius = 50,
 		.thickness = 10,
+        .date_font_size = 50,
+        .time_font_size = 30,
 		.ignore_empty = false,
 		.show_indicator = true,
 		.show_caps_lock_indicator = false,
 		.show_caps_lock_text = true,
 		.show_keyboard_layout = false,
 		.hide_keyboard_layout = false,
+        .show_date = false,
+        .show_time = false,
 		.show_failed_attempts = false
 	};
 	wl_list_init(&state.images);
 	set_default_colors(&state.args.colors);
+    set_default_positions(&state.args.pos);
 
 	char *config_path = NULL;
 	int result = parse_options(argc, argv, NULL, NULL, &config_path);
@@ -1243,7 +1304,10 @@ int main(int argc, char **argv) {
 		if (wl_display_flush(state.display) == -1 && errno != EAGAIN) {
 			break;
 		}
-		loop_poll(state.eventloop);
+
+		if (loop_poll(state.eventloop)) {
+            render_frames(&state);
+        }
 	}
 
 	free(state.args.font);

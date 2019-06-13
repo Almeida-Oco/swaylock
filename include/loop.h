@@ -23,9 +23,11 @@ struct loop *loop_create(void);
 void loop_destroy(struct loop *loop);
 
 /**
- * Poll the event loop. This will block until one of the fds has data.
+ * Poll the event loop.
+ * 
+ * Returns true every time screen should be updated
  */
-void loop_poll(struct loop *loop);
+bool loop_poll(struct loop *loop);
 
 /**
  * Add a file descriptor to the loop.

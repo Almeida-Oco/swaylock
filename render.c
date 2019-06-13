@@ -1,11 +1,13 @@
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
 #include <wayland-client.h>
 #include "cairo.h"
 #include "background-image.h"
 #include "swaylock.h"
 
-#define IN_SURFACE(desired, max, radius) ((desired <= max) ? desired - 4 : (max/2)-radius)
+#define IN_SURFACE(desired, max, default) (((desired) <= (max)) ? (desired) : (default))
+
 #define M_PI 3.14159265358979323846
 const float TYPE_INDICATOR_RANGE = M_PI / 3.0f;
 const float TYPE_INDICATOR_BORDER_THICKNESS = M_PI / 128.0f;
@@ -69,21 +71,31 @@ void render_frame_background(struct swaylock_surface *surface) {
 	wl_surface_commit(surface->surface);
 }
 
+void get_datetime(char *date_txt, char *time_txt) {
+    time_t rawtime;
+    struct tm * timeinfo;
+
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+
+    sprintf(date_txt, "%02d/%02d/%04d",timeinfo->tm_mday, timeinfo->tm_mon + 1, timeinfo->tm_year + 1900);
+    sprintf(time_txt, "%02d:%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+}
+
 void render_frame(struct swaylock_surface *surface) {
 	struct swaylock_state *state = surface->state;
-
+    uint32_t mid_x = surface->width / 2, time_y_offset = 0;
+    char time_txt[9], date_txt[11];
+    get_datetime(date_txt, time_txt);
 	int arc_radius = state->args.radius * surface->scale;
 	int arc_thickness = state->args.thickness * surface->scale;
 	int buffer_diameter = (arc_radius + arc_thickness) * 2;
-	int buffer_height = buffer_diameter * 2;
-
 	int ind_radius = state->args.radius + state->args.thickness;
-	int subsurf_xpos = IN_SURFACE(state->args.indicator_x, surface->width, ind_radius);
-	int subsurf_ypos = IN_SURFACE(state->args.indicator_y, surface->height, ind_radius);
-	wl_subsurface_set_position(surface->subsurface, subsurf_xpos, subsurf_ypos);
+
+	wl_subsurface_set_position(surface->subsurface, 0, 0);
 
 	surface->current_buffer = get_next_buffer(state->shm,
-			surface->indicator_buffers, buffer_diameter, buffer_height);
+			surface->indicator_buffers, surface->width, surface->height);
 	if (surface->current_buffer == NULL) {
 		return;
 	}
@@ -93,14 +105,14 @@ void render_frame(struct swaylock_surface *surface) {
 	wl_surface_commit(surface->child);
 
 	cairo_t *cairo = surface->current_buffer->cairo;
-	cairo_set_antialias(cairo, CAIRO_ANTIALIAS_BEST);
-	cairo_font_options_t *fo = cairo_font_options_create();
-	cairo_font_options_set_hint_style(fo, CAIRO_HINT_STYLE_FULL);
-	cairo_font_options_set_antialias(fo, CAIRO_ANTIALIAS_SUBPIXEL);
-	cairo_font_options_set_subpixel_order(fo, to_cairo_subpixel_order(surface->subpixel));
-	cairo_set_font_options(cairo, fo);
-	cairo_font_options_destroy(fo);
+    cairo_font_options_t *fo = cairo_font_options_create();
+    cairo_font_options_set_hint_style(fo, CAIRO_HINT_STYLE_FULL);
+    cairo_font_options_set_antialias(fo, CAIRO_ANTIALIAS_SUBPIXEL);
+    cairo_font_options_set_subpixel_order(fo, to_cairo_subpixel_order(surface->subpixel));
+    cairo_set_font_options(cairo, fo);
+    cairo_set_antialias(cairo, CAIRO_ANTIALIAS_BEST);
 	cairo_identity_matrix(cairo);
+    cairo_font_options_destroy(fo);
 
 	// Clear
 	cairo_save(cairo);
@@ -109,13 +121,52 @@ void render_frame(struct swaylock_surface *surface) {
 	cairo_paint(cairo);
 	cairo_restore(cairo);
 
+    if (state->args.show_date) {
+        cairo_text_extents_t te;
+        cairo_font_extents_t fe;
+        cairo_set_font_size(cairo, state->args.date_font_size);
+        cairo_text_extents(cairo, date_txt, &te);
+        cairo_font_extents(cairo, &fe);
+        int date_x = IN_SURFACE(state->args.pos.date_x - te.x_bearing, surface->width, 
+                mid_x - (te.width / 2 + te.x_bearing));
+        int date_y = IN_SURFACE(state->args.pos.date_y + te.height - (fe.descent / 2),
+                 surface->height, 10 + te.height - (fe.descent / 2));
+        time_y_offset = fe.height + te.height - (fe.descent / 2);
+
+        printf("Te.x_bearing = %f\n", te.x_bearing);
+        cairo_move_to(cairo, date_x, date_y);
+        cairo_show_text(cairo, date_txt);
+
+        cairo_new_sub_path(cairo);
+    }
+
+    if (state->args.show_time) {
+        cairo_text_extents_t te;
+        cairo_font_extents_t fe;
+        cairo_set_font_size(cairo, state->args.time_font_size);
+        cairo_text_extents(cairo, time_txt, &te);
+        cairo_font_extents(cairo, &fe);
+        int time_x = IN_SURFACE(state->args.pos.time_x - te.x_bearing, surface->width, 
+                mid_x - (te.width / 2 + te.x_bearing));
+        int time_y = IN_SURFACE(state->args.pos.time_y + te.height - (fe.descent / 2),
+                 surface->height, 10 + te.height - (fe.descent / 2));
+
+        cairo_move_to(cairo, time_x, time_y);
+        cairo_show_text(cairo, time_txt);
+
+        cairo_new_sub_path(cairo);
+    }
+
 	float type_indicator_border_thickness =
 		TYPE_INDICATOR_BORDER_THICKNESS * surface->scale;
 
 	if (state->args.show_indicator && state->auth_state != AUTH_STATE_IDLE) {
-		// Draw circle
+        int ind_x = IN_SURFACE(state->args.pos.ind_x, surface->width, (surface->width / 2) - ind_radius),
+            ind_y = IN_SURFACE(state->args.pos.ind_y, surface->height, (surface->height / 2) - ind_radius);
+		
+        // Draw circle
 		cairo_set_line_width(cairo, arc_thickness);
-		cairo_arc(cairo, buffer_diameter / 2, buffer_diameter / 2, arc_radius,
+		cairo_arc(cairo, ind_x + buffer_diameter / 2, ind_y + buffer_diameter / 2, arc_radius,
 				0, 2 * M_PI);
 		set_color_for_state(cairo, state, &state->args.colors.inside);
 		cairo_fill_preserve(cairo);
@@ -185,9 +236,9 @@ void render_frame(struct swaylock_surface *surface) {
 			double x, y;
 			cairo_text_extents(cairo, text, &extents);
 			cairo_font_extents(cairo, &fe);
-			x = (buffer_diameter / 2) -
+			x = ind_x + (buffer_diameter / 2) -
 				(extents.width / 2 + extents.x_bearing);
-			y = (buffer_diameter / 2) +
+			y = ind_y + (buffer_diameter / 2) +
 				(fe.height / 2 - fe.descent);
 
 			cairo_move_to(cairo, x, y);
@@ -202,7 +253,7 @@ void render_frame(struct swaylock_surface *surface) {
 			static double highlight_start = 0;
 			highlight_start +=
 				(rand() % (int)(M_PI * 100)) / 100.0 + M_PI * 0.5;
-			cairo_arc(cairo, buffer_diameter / 2, buffer_diameter / 2,
+			cairo_arc(cairo, ind_x + buffer_diameter / 2, ind_y + buffer_diameter / 2,
 					arc_radius, highlight_start,
 					highlight_start + TYPE_INDICATOR_RANGE);
 			if (state->auth_state == AUTH_STATE_INPUT) {
@@ -222,12 +273,12 @@ void render_frame(struct swaylock_surface *surface) {
 
 			// Draw borders
 			cairo_set_source_u32(cairo, state->args.colors.separator);
-			cairo_arc(cairo, buffer_diameter / 2, buffer_diameter / 2,
+			cairo_arc(cairo, ind_x + buffer_diameter / 2, ind_y + buffer_diameter / 2,
 					arc_radius, highlight_start,
 					highlight_start + type_indicator_border_thickness);
 			cairo_stroke(cairo);
 
-			cairo_arc(cairo, buffer_diameter / 2, buffer_diameter / 2,
+			cairo_arc(cairo, ind_x + buffer_diameter / 2, ind_y + buffer_diameter / 2,
 					arc_radius, highlight_start + TYPE_INDICATOR_RANGE,
 					highlight_start + TYPE_INDICATOR_RANGE +
 						type_indicator_border_thickness);
@@ -237,10 +288,10 @@ void render_frame(struct swaylock_surface *surface) {
 		// Draw inner + outer border of the circle
 		set_color_for_state(cairo, state, &state->args.colors.line);
 		cairo_set_line_width(cairo, 2.0 * surface->scale);
-		cairo_arc(cairo, buffer_diameter / 2, buffer_diameter / 2,
+		cairo_arc(cairo, ind_x + buffer_diameter / 2, ind_y + buffer_diameter / 2,
 				arc_radius - arc_thickness / 2, 0, 2 * M_PI);
 		cairo_stroke(cairo);
-		cairo_arc(cairo, buffer_diameter / 2, buffer_diameter / 2,
+		cairo_arc(cairo, ind_x + buffer_diameter / 2, ind_y + buffer_diameter / 2,
 				arc_radius + arc_thickness / 2, 0, 2 * M_PI);
 		cairo_stroke(cairo);
 
@@ -253,8 +304,8 @@ void render_frame(struct swaylock_surface *surface) {
 			cairo_text_extents(cairo, layout_text, &extents);
 			cairo_font_extents(cairo, &fe);
 			// upper left coordinates for box
-			x = (buffer_diameter / 2) - (extents.width / 2) - box_padding;
-			y = (buffer_diameter / 2) + arc_radius + arc_thickness/2 +
+			x = ind_x + (buffer_diameter / 2) - (extents.width / 2) - box_padding;
+			y = ind_y + (buffer_diameter / 2) + arc_radius + arc_thickness/2 +
 				box_padding; // use box_padding also as gap to indicator
 
 			// background box
@@ -292,4 +343,3 @@ void render_frames(struct swaylock_state *state) {
 		render_frame(surface);
 	}
 }
-

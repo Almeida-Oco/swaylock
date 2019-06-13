@@ -43,13 +43,23 @@ struct swaylock_colors {
 	struct swaylock_colorset text;
 };
 
+struct swaylock_positions {
+    uint32_t ind_x;
+    uint32_t ind_y;
+    uint32_t date_x;
+    uint32_t date_y;
+    uint32_t time_x;
+    uint32_t time_y;
+};
+
 struct swaylock_args {
 	struct swaylock_colors colors;
-	enum background_mode mode;
+    struct swaylock_positions pos;
+    enum background_mode mode;
 	char *font;
 	uint32_t font_size;
-    uint32_t indicator_x;
-    uint32_t indicator_y;
+    uint32_t time_font_size;
+    uint32_t date_font_size;
 	uint32_t radius;
 	uint32_t thickness;
 	bool ignore_empty;
@@ -58,6 +68,8 @@ struct swaylock_args {
 	bool show_caps_lock_indicator;
 	bool show_keyboard_layout;
 	bool hide_keyboard_layout;
+    bool show_date;
+    bool show_time;
 	bool show_failed_attempts;
 	bool daemonize;
 };
@@ -123,6 +135,7 @@ void render_frame_background(struct swaylock_surface *surface);
 void render_frame(struct swaylock_surface *surface);
 void render_frames(struct swaylock_state *state);
 void damage_surface(struct swaylock_surface *surface);
+void rerender(void *ptr);
 void damage_state(struct swaylock_state *state);
 void clear_password_buffer(struct swaylock_password *pw);
 void schedule_indicator_clear(struct swaylock_state *state);
