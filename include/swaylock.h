@@ -37,6 +37,8 @@ struct swaylock_colors {
 	uint32_t layout_background;
 	uint32_t layout_border;
 	uint32_t layout_text;
+    uint32_t date;
+    uint32_t time;
 	struct swaylock_colorset inside;
 	struct swaylock_colorset line;
 	struct swaylock_colorset ring;

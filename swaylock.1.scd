@@ -86,8 +86,42 @@ Locks your Wayland session.
 *--caps-lock-key-hl-color* <rrggbb[aa]>
 	Sets the color of the key press highlight segments when Caps Lock is active.
 
-*--font* <font>
+*--indicator-font* <font>
 	Sets the font of the text inside the indicator.
+
+*--indicator-font-size* <size>
+	Sets a fixed font size for the text inside the indicator.
+
+*--show-date*
+	Shows the current date of the system (dd/mm/yyyy)
+
+*--date-pos* <[x]:[y]>
+	Sets the top-left corner position of the date text
+
+*--date-color* <rrggbb[aa]>
+	Sets the color of the date text
+
+*--date-font* <font>
+	Sets the font of the date text
+
+*--date-font-size* <size>
+	Sets a fixed font size for the date text
+
+*--show-time*
+	Shows the current time of the system (hh:mm:ss)
+
+*--time-pos* <[x]:[y]>
+	Sets the top-left corner position of the time text
+
+*--time-color* <rrggbb[aa]>
+	Sets the color of the time text
+
+*--time-font* <font>
+	Sets the font of the time text
+
+*--time-font-size* <size>
+	Sets a fixed font size for the time text
+
 
 *--indicator-radius* <radius>
 	Sets the radius of the indicator to _radius_ pixels. The default value is
@@ -96,6 +130,9 @@ Locks your Wayland session.
 *--indicator-thickness* <thickness>
 	Sets the thickness of the indicator to _thickness_ pixels. The default value
 	is 10.
+
+*--indicator-pos* <[x]:[y]>
+	Sets the top-left corner of the indicator position.
 
 *--inside-color* <rrggbb[aa]>
 	Sets the color of the inside of the indicator when typing or idle.

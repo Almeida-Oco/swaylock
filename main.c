@@ -495,6 +495,8 @@ static void set_default_colors(struct swaylock_colors *colors) {
 	colors->layout_background = 0x000000C0;
 	colors->layout_border = 0x00000000;
 	colors->layout_text = 0xFFFFFFFF;
+    colors->date = 0x000000FF;
+    colors->time = 0x000000FF;
 	colors->inside = (struct swaylock_colorset){
 		.input = 0x000000C0,
 		.cleared = 0xE5A445C0,
@@ -555,17 +557,21 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 		LO_BS_HL_COLOR = 256,
 		LO_CAPS_LOCK_BS_HL_COLOR,
 		LO_CAPS_LOCK_KEY_HL_COLOR,
-		LO_FONT,
-		LO_FONT_SIZE,
+        LO_SHOW_DATE,
+        LO_DATE_POSITION,
+        LO_DATE_COLOR,
+        LO_DATE_FONT,
         LO_DATE_FONT_SIZE,
+        LO_SHOW_TIME,
+        LO_TIME_POSITION,
+        LO_TIME_COLOR,
+        LO_TIME_FONT,
         LO_TIME_FONT_SIZE,
+		LO_INDICATOR_FONT,
+		LO_INDICATOR_FONT_SIZE,
 		LO_IND_RADIUS,
 		LO_IND_THICKNESS,
         LO_IND_POSITION,
-        LO_SHOW_DATE,
-        LO_SHOW_TIME,
-        LO_DATE_POSITION,
-        LO_TIME_POSITION,
 		LO_INSIDE_COLOR,
 		LO_INSIDE_CLEAR_COLOR,
 		LO_INSIDE_CAPS_LOCK_COLOR,
@@ -614,16 +620,20 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 		{"show-failed-attempts", no_argument, NULL, 'F'},
 		{"version", no_argument, NULL, 'v'},
         {"show-date", no_argument, NULL, LO_SHOW_DATE},
-        {"show-time", no_argument, NULL, LO_SHOW_TIME},
         {"date-pos", required_argument, NULL, LO_DATE_POSITION},
-        {"time-pos", required_argument, NULL, LO_TIME_POSITION},
+        {"date-color", required_argument, NULL, LO_DATE_COLOR},
+        {"date-font", required_argument, NULL, LO_DATE_FONT},
         {"date-font-size", required_argument, NULL, LO_DATE_FONT_SIZE},
+        {"show-time", no_argument, NULL, LO_SHOW_TIME},
+        {"time-pos", required_argument, NULL, LO_TIME_POSITION},
+        {"time-color", required_argument, NULL, LO_TIME_COLOR},
+        {"time-font", required_argument, NULL, LO_TIME_FONT},
         {"time-font-size", required_argument, NULL, LO_TIME_FONT_SIZE},
 		{"bs-hl-color", required_argument, NULL, LO_BS_HL_COLOR},
 		{"caps-lock-bs-hl-color", required_argument, NULL, LO_CAPS_LOCK_BS_HL_COLOR},
 		{"caps-lock-key-hl-color", required_argument, NULL, LO_CAPS_LOCK_KEY_HL_COLOR},
-		{"font", required_argument, NULL, LO_FONT},
-		{"font-size", required_argument, NULL, LO_FONT_SIZE},
+		{"indicator-font", required_argument, NULL, LO_INDICATOR_FONT},
+		{"indicator-font-size", required_argument, NULL, LO_INDICATOR_FONT_SIZE},
 		{"indicator-radius", required_argument, NULL, LO_IND_RADIUS},
 		{"indicator-thickness", required_argument, NULL, LO_IND_THICKNESS},
         {"indicator-pos", required_argument, NULL, LO_IND_POSITION},
@@ -698,16 +708,28 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 		"  --caps-lock-key-hl-color <color> "
 			"Sets the color of the key press highlight segments when "
 			"Caps Lock is active.\n"
-		"  --font <font>                    "
-			"Sets the font of the text.\n"
-		"  --font-size <size>               "
+		"  --indicator-font <font>          "
+			"Sets the font of the indicator text.\n"
+		"  --indicator-font-size <size>     "
 			"Sets a fixed font size for the indicator text.\n"
-        "  --show_date                      "
+        "  --show-date                      "
 			"Shows the current date (dd/mm/yyyy)\n"
-        "  --show_time                      "
-			"Shows the current time (hh:mm:ss)\n"
+        "  --date-pos <position>            "
+            "Sets the top-left position of the date\n"
+        "  --date-color <color>             "
+            "Sets the color of the date text\n"
+        "  --date-font <font>               "
+            "Sets the font of the date text\n"
         "  --date-font-size <size>          "
 			"Sets a fixed font size for the date text.\n"
+        "  --show-time                      "
+			"Shows the current time (hh:mm:ss)\n"
+        "  --time-pos <position>            "
+            "Sets the top-left position of the time\n"
+        "  --time-color <color>             "
+            "Sets the color of the time text\n"
+        "  --time-font <font>               "
+            "Sets the font of the time text\n"
         "  --time-font-size <size>          "
 			"Sets a fixed font size for the time text.\n"
 		"  --indicator-radius <radius>      "
@@ -880,26 +902,32 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
                 state->args.show_date = true;
             }
             break;
-        case LO_SHOW_TIME:
+        case LO_DATE_POSITION:
             if (state) {
-                state->args.show_time = true;
+                uint32_t *pos = parse_position(optarg);
+                state->args.pos.date_x = pos[0];
+                state->args.pos.date_y = pos[1];
             }
+            break;
+        case LO_DATE_COLOR:
+            if (state) {
+                state->args.colors.date = parse_color(optarg);
+            }
+            break;
+        case LO_DATE_FONT: 
+            if (state) {
+				free(state->args.fonts.date_font);
+				state->args.fonts.date_font = strdup(optarg);
+			}
             break;
         case LO_DATE_FONT_SIZE:
 			if (state) {
 				state->args.fonts.date_font_size = atoi(optarg);
 			}
 			break;
-        case LO_TIME_FONT_SIZE:
-			if (state) {
-				state->args.fonts.time_font_size = atoi(optarg);
-			}
-			break;
-        case LO_DATE_POSITION:
+        case LO_SHOW_TIME:
             if (state) {
-                uint32_t *pos = parse_position(optarg);
-                state->args.pos.date_x = pos[0];
-                state->args.pos.date_y = pos[1];
+                state->args.show_time = true;
             }
             break;
         case LO_TIME_POSITION:
@@ -909,6 +937,22 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
                 state->args.pos.time_y = pos[1];
             }
             break;
+        case LO_TIME_COLOR:
+            if (state) {
+                state->args.colors.time = parse_color(optarg);
+            }
+            break;
+        case LO_TIME_FONT: 
+            if (state) {
+				free(state->args.fonts.time_font);
+				state->args.fonts.time_font = strdup(optarg);
+			}
+            break;
+        case LO_TIME_FONT_SIZE:
+			if (state) {
+				state->args.fonts.time_font_size = atoi(optarg);
+			}
+			break;
         case LO_BS_HL_COLOR:
 			if (state) {
 				state->args.colors.bs_highlight = parse_color(optarg);
@@ -924,13 +968,13 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 				state->args.colors.caps_lock_key_highlight = parse_color(optarg);
 			}
 			break;
-		case LO_FONT:
+		case LO_INDICATOR_FONT:
 			if (state) {
 				free(state->args.fonts.indicator_font);
 				state->args.fonts.indicator_font = strdup(optarg);
 			}
 			break;
-		case LO_FONT_SIZE:
+		case LO_INDICATOR_FONT_SIZE:
 			if (state) {
 				state->args.fonts.indicator_font_size = atoi(optarg);
 			}

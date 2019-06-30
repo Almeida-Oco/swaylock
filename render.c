@@ -125,6 +125,9 @@ void render_frame(struct swaylock_surface *surface) {
         cairo_text_extents_t te;
         cairo_font_extents_t fe;
         cairo_set_font_size(cairo, state->args.fonts.date_font_size);
+        cairo_select_font_face(cairo, state->args.fonts.date_font,
+				CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+        cairo_set_source_u32(cairo, state->args.colors.date);
         cairo_text_extents(cairo, date_txt, &te);
         cairo_font_extents(cairo, &fe);
         int date_x = IN_SURFACE(state->args.pos.date_x - te.x_bearing, surface->width, 
@@ -133,7 +136,6 @@ void render_frame(struct swaylock_surface *surface) {
                  surface->height, 10 + te.height - (fe.descent / 2));
         time_y_offset = fe.height + te.height - (fe.descent / 2);
 
-        printf("Te.x_bearing = %f\n", te.x_bearing);
         cairo_move_to(cairo, date_x, date_y);
         cairo_show_text(cairo, date_txt);
 
@@ -144,6 +146,9 @@ void render_frame(struct swaylock_surface *surface) {
         cairo_text_extents_t te;
         cairo_font_extents_t fe;
         cairo_set_font_size(cairo, state->args.fonts.time_font_size);
+        cairo_select_font_face(cairo, state->args.fonts.time_font,
+				CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+        cairo_set_source_u32(cairo, state->args.colors.time);                
         cairo_text_extents(cairo, time_txt, &te);
         cairo_font_extents(cairo, &fe);
         int time_x = IN_SURFACE(state->args.pos.time_x - te.x_bearing, surface->width, 
