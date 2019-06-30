@@ -52,14 +52,20 @@ struct swaylock_positions {
     uint32_t time_y;
 };
 
+struct swaylock_fonts {
+    char *indicator_font;
+    char *time_font;
+    char *date_font;
+    uint32_t indicator_font_size;
+    uint32_t time_font_size;
+    uint32_t date_font_size;
+};
+
 struct swaylock_args {
 	struct swaylock_colors colors;
     struct swaylock_positions pos;
+    struct swaylock_fonts fonts;
     enum background_mode mode;
-	char *font;
-	uint32_t font_size;
-    uint32_t time_font_size;
-    uint32_t date_font_size;
 	uint32_t radius;
 	uint32_t thickness;
 	bool ignore_empty;
@@ -94,6 +100,8 @@ struct swaylock_state {
 	struct swaylock_args args;
 	struct swaylock_password password;
 	struct swaylock_xkb xkb;
+    double last_highlight;
+    bool refreshing;
 	enum auth_state auth_state;
 	int failed_attempts;
 	bool run_display;

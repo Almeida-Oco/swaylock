@@ -124,7 +124,7 @@ void render_frame(struct swaylock_surface *surface) {
     if (state->args.show_date) {
         cairo_text_extents_t te;
         cairo_font_extents_t fe;
-        cairo_set_font_size(cairo, state->args.date_font_size);
+        cairo_set_font_size(cairo, state->args.fonts.date_font_size);
         cairo_text_extents(cairo, date_txt, &te);
         cairo_font_extents(cairo, &fe);
         int date_x = IN_SURFACE(state->args.pos.date_x - te.x_bearing, surface->width, 
@@ -143,7 +143,7 @@ void render_frame(struct swaylock_surface *surface) {
     if (state->args.show_time) {
         cairo_text_extents_t te;
         cairo_font_extents_t fe;
-        cairo_set_font_size(cairo, state->args.time_font_size);
+        cairo_set_font_size(cairo, state->args.fonts.time_font_size);
         cairo_text_extents(cairo, time_txt, &te);
         cairo_font_extents(cairo, &fe);
         int time_x = IN_SURFACE(state->args.pos.time_x - te.x_bearing, surface->width, 
@@ -178,10 +178,10 @@ void render_frame(struct swaylock_surface *surface) {
 		const char *layout_text = NULL;
 		char attempts[4]; // like i3lock: count no more than 999
 		set_color_for_state(cairo, state, &state->args.colors.text);
-		cairo_select_font_face(cairo, state->args.font,
+		cairo_select_font_face(cairo, state->args.fonts.indicator_font,
 				CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-		if (state->args.font_size > 0) {
-		  cairo_set_font_size(cairo, state->args.font_size);
+		if (state->args.fonts.indicator_font_size > 0) {
+		  cairo_set_font_size(cairo, state->args.fonts.indicator_font_size);
 		} else {
 		  cairo_set_font_size(cairo, arc_radius / 3.0f);
 		}
@@ -251,8 +251,11 @@ void render_frame(struct swaylock_surface *surface) {
 		if (state->auth_state == AUTH_STATE_INPUT
 				|| state->auth_state == AUTH_STATE_BACKSPACE) {
 			static double highlight_start = 0;
-			highlight_start +=
-				(rand() % (int)(M_PI * 100)) / 100.0 + M_PI * 0.5;
+            if (!state->refreshing) {
+                highlight_start +=
+                    (rand() % (int)(M_PI * 100)) / 100.0 + M_PI * 0.5;
+                state->last_highlight = highlight_start;
+            }
 			cairo_arc(cairo, ind_x + buffer_diameter / 2, ind_y + buffer_diameter / 2,
 					arc_radius, highlight_start,
 					highlight_start + TYPE_INDICATOR_RANGE);

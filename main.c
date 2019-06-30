@@ -534,6 +534,15 @@ static void set_default_positions(struct swaylock_positions *pos) {
     pos->time_y = UINT_MAX;
 }
 
+static void set_default_fonts(struct swaylock_fonts *fonts) {
+    fonts->indicator_font = strdup("sans-serif");
+    fonts->date_font = strdup("sans-serif");
+    fonts->time_font = strdup("sans-serif");
+    fonts->indicator_font_size = 0;
+    fonts->date_font_size = 50;
+    fonts->time_font_size = 30;
+}
+
 enum line_mode {
 	LM_LINE,
 	LM_INSIDE,
@@ -878,12 +887,12 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
             break;
         case LO_DATE_FONT_SIZE:
 			if (state) {
-				state->args.date_font_size = atoi(optarg);
+				state->args.fonts.date_font_size = atoi(optarg);
 			}
 			break;
         case LO_TIME_FONT_SIZE:
 			if (state) {
-				state->args.time_font_size = atoi(optarg);
+				state->args.fonts.time_font_size = atoi(optarg);
 			}
 			break;
         case LO_DATE_POSITION:
@@ -917,13 +926,13 @@ static int parse_options(int argc, char **argv, struct swaylock_state *state,
 			break;
 		case LO_FONT:
 			if (state) {
-				free(state->args.font);
-				state->args.font = strdup(optarg);
+				free(state->args.fonts.indicator_font);
+				state->args.fonts.indicator_font = strdup(optarg);
 			}
 			break;
 		case LO_FONT_SIZE:
 			if (state) {
-				state->args.font_size = atoi(optarg);
+				state->args.fonts.indicator_font_size = atoi(optarg);
 			}
 			break;
 		case LO_IND_RADIUS:
@@ -1181,12 +1190,8 @@ int main(int argc, char **argv) {
 	state.failed_attempts = 0;
 	state.args = (struct swaylock_args){
 		.mode = BACKGROUND_MODE_FILL,
-		.font = strdup("sans-serif"),
-		.font_size = 0,
 		.radius = 50,
 		.thickness = 10,
-        .date_font_size = 50,
-        .time_font_size = 30,
 		.ignore_empty = false,
 		.show_indicator = true,
 		.show_caps_lock_indicator = false,
@@ -1200,6 +1205,7 @@ int main(int argc, char **argv) {
 	wl_list_init(&state.images);
 	set_default_colors(&state.args.colors);
     set_default_positions(&state.args.pos);
+    set_default_fonts(&state.args.fonts);
 
 	char *config_path = NULL;
 	int result = parse_options(argc, argv, NULL, NULL, &config_path);
@@ -1216,7 +1222,9 @@ int main(int argc, char **argv) {
 		int config_status = load_config(config_path, &state, &line_mode);
 		free(config_path);
 		if (config_status != 0) {
-			free(state.args.font);
+			free(state.args.fonts.indicator_font);
+            free(state.args.fonts.date_font);
+            free(state.args.fonts.time_font);
 			return config_status;
 		}
 	}
@@ -1225,7 +1233,9 @@ int main(int argc, char **argv) {
 		swaylock_log(LOG_DEBUG, "Parsing CLI Args");
 		int result = parse_options(argc, argv, &state, &line_mode, NULL);
 		if (result != 0) {
-			free(state.args.font);
+			free(state.args.fonts.indicator_font);
+            free(state.args.fonts.date_font);
+            free(state.args.fonts.time_font);
 			return result;
 		}
 	}
@@ -1248,7 +1258,9 @@ int main(int argc, char **argv) {
 	state.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	state.display = wl_display_connect(NULL);
 	if (!state.display) {
-		free(state.args.font);
+		free(state.args.fonts.indicator_font);
+        free(state.args.fonts.date_font);
+        free(state.args.fonts.time_font);
 		swaylock_log(LOG_ERROR, "Unable to connect to the compositor. "
 				"If your compositor is running, check or set the "
 				"WAYLAND_DISPLAY environment variable.");
@@ -1260,7 +1272,9 @@ int main(int argc, char **argv) {
 	wl_display_roundtrip(state.display);
 	assert(state.compositor && state.layer_shell && state.shm);
 	if (!state.input_inhibit_manager) {
-		free(state.args.font);
+		free(state.args.fonts.indicator_font);
+        free(state.args.fonts.date_font);
+        free(state.args.fonts.time_font);
 		swaylock_log(LOG_ERROR, "Compositor does not support the input "
 				"inhibitor protocol, refusing to run insecurely");
 		return 1;
@@ -1268,7 +1282,9 @@ int main(int argc, char **argv) {
 
 	zwlr_input_inhibit_manager_v1_get_inhibitor(state.input_inhibit_manager);
 	if (wl_display_roundtrip(state.display) == -1) {
-		free(state.args.font);
+		free(state.args.fonts.indicator_font);
+        free(state.args.fonts.date_font);
+        free(state.args.fonts.time_font);
 		swaylock_log(LOG_ERROR, "Exiting - failed to inhibit input:"
 				" is another lockscreen already running?");
 		return 2;
@@ -1312,11 +1328,15 @@ int main(int argc, char **argv) {
 		}
 
 		if (loop_poll(state.eventloop)) {
+            state.refreshing = true;
             render_frames(&state);
+            state.refreshing = false;
         }
 	}
 
-	free(state.args.font);
+    free(state.args.fonts.indicator_font);
+    free(state.args.fonts.date_font);
+    free(state.args.fonts.time_font);
 	return 0;
 }
 
