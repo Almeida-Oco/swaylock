@@ -64,7 +64,7 @@ void loop_destroy(struct loop *loop) {
 
 bool loop_poll(struct loop *loop) {
 	struct timespec now;
-	poll(loop->fds, loop->fd_length, 95);
+	poll(loop->fds, loop->fd_length, 90);
 
 	// Dispatch fds
 	size_t fd_index = 0;
